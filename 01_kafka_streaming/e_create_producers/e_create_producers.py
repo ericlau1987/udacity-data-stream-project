@@ -103,6 +103,7 @@ def create_topic(client):
         try:
             future.result()
         except Exception as e:
+            print(e)
             print("exiting production loop")
 
 
