@@ -92,6 +92,8 @@ services:
     depends_on:
     - "kafka0"
     - "schema-registry"
+    volumes:
+      - .:/temp/
 
   ksql:
     image: confluentinc/cp-ksql-server:5.2.2
