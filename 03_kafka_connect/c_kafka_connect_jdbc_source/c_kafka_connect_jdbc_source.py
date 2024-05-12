@@ -18,7 +18,7 @@ def configure_connector():
     if resp.status_code == 200:
         return
 
-    #
+    #===
     # TODO: Complete the Kafka Connect Config below for a JDBC source connector.
     #       You should whitelist the `clicks` table, use incrementing mode and the
     #       incrementing column name should be id.
