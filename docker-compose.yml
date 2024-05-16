@@ -92,6 +92,8 @@ services:
     depends_on:
     - "kafka0"
     - "schema-registry"
+    volumes:
+      - .:/temp/
 
   ksql:
     image: confluentinc/cp-ksql-server:5.2.2
@@ -142,7 +144,7 @@ services:
     - "schema-registry"
 
   postgres:
-    image: postgres:16
+    image: postgres:11
     ports:
     - "5432:5432"
     environment:
@@ -150,5 +152,6 @@ services:
       POSTGRES_PASSWORD: "chicago"
       POSTGRES_DB: "cta"
     volumes:
-    - ./kafka/chicago_transit_authority/producers/data/cta_stations.csv:/tmp/cta_stations.csv
+    - ./data/:/temp/data/
     - ./load_stations.sql:/docker-entrypoint-initdb.d/load_stations.sql
+    - ./load_clicks.sql:/docker-entrypoint-initdb.d/load_clicks.sql
