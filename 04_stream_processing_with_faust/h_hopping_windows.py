@@ -16,15 +16,17 @@ class ClickEvent(faust.Record):
     number: int
 
 
-app = faust.App("exercise7", broker="kafka://kafka0:19092")
+app = faust.App("exercise8", broker="kafka://kafka0:19092")
 clickevents_topic = app.topic("lesson4.solution5.click_events", value_type=ClickEvent)
 
 #
-# TODO: Define a tumbling window of 10 seconds
-#       See: https://faust.readthedocs.io/en/latest/userguide/tables.html#how-to
+# TODO: Define a hopping window of 1 minute with a 10-second step
+#       See: https://faust.readthedocs.io/en/latest/reference/faust.tables.table.html?highlight=hopping#faust.tables.table.Table.hopping
 #
-uri_summary_table = app.Table("uri_summary_tumbling", default=int).tumbling(
-    timedelta(seconds=30)
+uri_summary_table = app.Table("uri_summary_hopping", default=int).hopping(
+    size=timedelta(seconds=30),
+    step=timedelta(seconds=5),
+    expires=timedelta(minutes=10),
 )
 
 
@@ -32,10 +34,6 @@ uri_summary_table = app.Table("uri_summary_tumbling", default=int).tumbling(
 async def clickevent(clickevents):
     async for ce in clickevents.group_by(ClickEvent.uri):
         uri_summary_table[ce.uri] += ce.number
-        #
-        # TODO: Play with printing value by: now(), current(), value()
-        #       See: https://faust.readthedocs.io/en/latest/userguide/tables.html#how-to
-        #
         print(f"{ce.uri}: {uri_summary_table[ce.uri].current()}")
 
 
