@@ -29,7 +29,7 @@ class TurnstileHardware:
             round(self.metrics_df.iloc[0]["avg_saturday_rides"])
         )
         self.sunday_ridership = int(
-            round(self.metrics_df.iloc[0]["avg_sunday-holiday_rides"])
+            round(self.metrics_df.iloc[0]["avg_sunday_holiday_rides"])
         )
 
     @classmethod

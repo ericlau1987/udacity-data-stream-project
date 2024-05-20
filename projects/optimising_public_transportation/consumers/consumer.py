@@ -2,7 +2,8 @@
 import logging
 
 import confluent_kafka
-from confluent_kafka import Consumer
+from confluent_kafka import Consumer, OFFSET_BEGINNING
+from confluent_kafka.admin import AdminClient
 from confluent_kafka.avro import AvroConsumer
 from confluent_kafka.avro.serializer import SerializerError
 from tornado import gen
@@ -21,7 +22,7 @@ class KafkaConsumer:
         is_avro=True,
         offset_earliest=False,
         sleep_secs=1.0,
-        consume_timeout=0.1,
+        consume_timeout=1,
     ):
         """Creates a consumer object for asynchronous use"""
         self.topic_name_pattern = topic_name_pattern
@@ -40,15 +41,21 @@ class KafkaConsumer:
                 #
                 # TODO
                 #
+            "bootstrap.servers": "PLAINTEXT://kafka0:19092",
+            "group.id": f"{topic_name_pattern}",
+            "max.poll.interval.ms": 600000,
+            "default.topic.config":
+            {"auto.offset.reset": "earliest" if offset_earliest else "latest"
+            }
         }
 
         # TODO: Create the Consumer, using the appropriate type.
         if is_avro is True:
-            self.broker_properties["schema.registry.url"] = "http://localhost:8081"
-            #self.consumer = AvroConsumer(...)
+            # self.broker_properties["schema.registry.url"] = "http://schema-registry:8081"
+            self.broker_properties["schema.registry.url"] = "http://schema-registry:8081"
+            self.consumer = AvroConsumer(self.broker_properties)
         else:
-            #self.consumer = Consumer(...)
-            pass
+            self.consumer = Consumer(self.broker_properties)
 
         #
         #
@@ -56,23 +63,23 @@ class KafkaConsumer:
         # how the `on_assign` callback should be invoked.
         #
         #
-        # self.consumer.subscribe( TODO )
+        print(self._get_topics())
+        self.consumer.subscribe(self._get_topics(), on_assign=self.on_assign)
 
     def on_assign(self, consumer, partitions):
         """Callback for when topic assignment takes place"""
         # TODO: If the topic is configured to use `offset_earliest` set the partition offset to
         # the beginning or earliest
-        logger.info("on_assign is incomplete - skipping")
-        for partition in partitions:
-            pass
-            #
-            #
-            # TODO
-            #
-            #
+        try:
+            for partition in partitions:
+                partition.offset = OFFSET_BEGINNING
 
-        logger.info("partitions assigned for %s", self.topic_name_pattern)
-        consumer.assign(partitions)
+            logger.info("partitions assigned for %s", self.topic_name_pattern)
+            consumer.assign(partitions)
+        except Exception as e:
+            logger.info("on_assign is incomplete - skipping")
+            logger.info(f"{e}")
+            raise Exception
 
     async def consume(self):
         """Asynchronously consumes data from kafka topic"""
@@ -80,6 +87,7 @@ class KafkaConsumer:
             num_results = 1
             while num_results > 0:
                 num_results = self._consume()
+                print(f"{self.topic_name_pattern}: {num_results}")
             await gen.sleep(self.sleep_secs)
 
     def _consume(self):
@@ -91,9 +99,27 @@ class KafkaConsumer:
         # is retrieved.
         #
         #
-        logger.info("_consume is incomplete - skipping")
-        return 0
+        message = self.consumer.poll(timeout=self.consume_timeout)
+        if message is None:
+            logger.debug("no message received by consumer")
+            return 0
+        elif message.error() is not None:
+            logger.info(f"error from consumer {message.error()}")
+        else:
+            self.message_handler(message)
+            logger.INFO(f"Consumer Message Key :{message}")
+            return 1 # message is processed
 
+    def _get_topics(self) -> list:
+        
+        client = AdminClient({"bootstrap.servers": self.broker_properties["bootstrap.servers"]})
+        topic_metadata = client.list_topics(timeout=5)
+        topics_included = []
+        for topic in topic_metadata.topics:
+            if self.topic_name_pattern in topic:
+                topics_included.append(topic)
+        
+        return topics_included
 
     def close(self):
         """Cleans up any open kafka consumers"""
@@ -102,3 +128,4 @@ class KafkaConsumer:
         # TODO: Cleanup the kafka consumer
         #
         #
+        self.consumer.close()
