@@ -234,3 +234,5 @@ Once the simulation is running, you may hit `Ctrl+C` at any time to exit.
 5. `python server.py`
 
 Once the server is running, you may hit `Ctrl+C` at any time to exit.
+
+` python producers/simulation.py&consumers/faust_stream worker&consumers/ksql.py&consumers/server.py`

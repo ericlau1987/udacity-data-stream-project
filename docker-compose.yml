@@ -92,6 +92,7 @@ services:
     depends_on:
     - "kafka0"
     - "schema-registry"
+    - "postgres"
     volumes:
       - .:/temp/
 
@@ -144,7 +145,7 @@ services:
     - "schema-registry"
 
   postgres:
-    image: postgres:11
+    image: postgres:13
     ports:
     - "5432:5432"
     environment:
@@ -153,5 +154,8 @@ services:
       POSTGRES_DB: "cta"
     volumes:
     - ./data/:/temp/data/
-    - ./load_stations.sql:/docker-entrypoint-initdb.d/load_stations.sql
+    - ./projects/optimising_public_transportation/producers/data/:/temp/data/optimising_public_transportation/
     - ./load_clicks.sql:/docker-entrypoint-initdb.d/load_clicks.sql
+    - ./load_stations.sql:/docker-entrypoint-initdb.d/load_stations.sql
+    - ./load_ridership_curve.sql:/docker-entrypoint-initdb.d/load_ridership_curve.sql
+    - ./load_ridership_seed.sql:/docker-entrypoint-initdb.d/load_ridership_seed.sql

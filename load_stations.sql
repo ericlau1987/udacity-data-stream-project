@@ -24,4 +24,4 @@ COPY stations(
   red,
   blue,
   green
-) FROM '/temp/data/cta_stations.csv' DELIMITER ',' CSV HEADER;
+) FROM '/temp/data/optimising_public_transportation/cta_stations.csv' DELIMITER ',' CSV HEADER;
