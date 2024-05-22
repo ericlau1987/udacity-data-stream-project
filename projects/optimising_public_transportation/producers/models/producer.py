@@ -16,8 +16,8 @@ class Producer:
 
     # Tracks existing topics across all Producer instances
     existing_topics = set([])
-    BROKER_URL = "PLAINTEXT://kafka0:19092"
-    SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
+    BROKER_URL = "PLAINTEXT://localhost:19092" # "PLAINTEXT://kafka0:19092"
+    SCHEMA_REGISTRY_URL = "http://localhost:8081/" #"http://schema-registry:8081/"
 
     def __init__(
         self,
@@ -43,10 +43,10 @@ class Producer:
         #
         self.broker_properties = {
             # TODO
-            "bootstrap.servers" : "PLAINTEXT://kafka0:19092", 
+            "bootstrap.servers" : Producer.BROKER_URL, 
             # TODO
             # "schema.registry.url" : "http://localhost:8081",
-            "schema.registry.url" : "http://schema-registry:8081/", #--> Docker
+            "schema.registry.url" : Producer.SCHEMA_REGISTRY_URL, #--> Docker
             # TODO
             "default.topic.config": {"acks": "all"}
         }

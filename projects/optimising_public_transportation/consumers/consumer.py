@@ -51,7 +51,7 @@ class KafkaConsumer:
         # TODO: Create the Consumer, using the appropriate type.
         if is_avro is True:
             # self.broker_properties["schema.registry.url"] = "http://schema-registry:8081"
-            self.broker_properties["schema.registry.url"] = "http://schema-registry:8081"
+            self.broker_properties["schema.registry.url"] = "http://localhost:8081"
             self.consumer = AvroConsumer(self.broker_properties)
         else:
             self.consumer = Consumer(self.broker_properties)
