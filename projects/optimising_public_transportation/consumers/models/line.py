@@ -36,6 +36,7 @@ class Line:
         prev_dir = value.get("prev_direction")
         if prev_dir is not None and prev_station_id is not None:
             prev_station = self.stations.get(prev_station_id)
+            logger.debug(f"prev_station: {prev_station}")
             if prev_station is not None:
                 prev_station.handle_departure(prev_dir)
             else:
@@ -57,18 +58,17 @@ class Line:
     def process_message(self, message):
         """Given a kafka message, extract data"""
         # TODO: Based on the message topic, call the appropriate handler.
-        print(message.value())
-        if 'org.chicago.cta.stations.table' in message.topic(): # Set the conditional correctly to the stations Faust Table
+        logger.debug(f"{message.topic()}: {message.value()}")
+        if 'org.chicago.cta.stations.table' == message.topic(): # Set the conditional correctly to the stations Faust Table
             
             try:
                 value = json.loads(message.value())
-                # print(message.value())
                 self._handle_station(value)
             except Exception as e:
                 logger.fatal("bad station? %s, %s", value, e)
         elif 'org.chicago.cta.station.arrivals.' in message.topic(): # Set the conditional to the arrival topic
             self._handle_arrival(message)
-            logger.info(f"arrival {message.value()}")
+            logger.info(f"{message.topic()}: {message.value()}")
         elif 'TURNSTILE_SUMMARY' in message.topic(): # Set the conditional to the KSQL Turnstile Summary Topic
             json_data = json.loads(message.value())
             station_id = json_data.get("STATION_ID")

@@ -1,8 +1,8 @@
-"""Defines trends calculations for stations"""
+# consumers/faust_stream.py
+""" Defines trends calculations for stations """
 import logging
 
 import faust
-
 
 logger = logging.getLogger(__name__)
 
@@ -29,45 +29,49 @@ class TransformedStation(faust.Record):
     line: str
 
 
-# TODO: Define a Faust Stream that ingests data from the Kafka Connect stations topic and
+# Define a Faust Stream that ingests data from the Kafka Connect stations topic and
 #   places it into a new topic with only the necessary information.
 app = faust.App("stations-stream", broker="kafka://kafka0:19092", store="memory://")
-# TODO: Define the input Kafka Topic. Hint: What topic did Kafka Connect output to?
-topic = app.topic("org.chicago.cta.stations", value_type=Station, partitions=1)
-# TODO: Define the output Kafka Topic
-out_topic = app.topic("org.chicago.cta.stations.table", partitions=1)
-# TODO: Define a Faust Table
+
+# Define the input Kafka Topic.
+topic = app.topic("org.chicago.cta.stations",value_type=Station)
+# Define the output Kafka Topic
+out_topic = app.topic("org.chicago.cta.stations.table", partitions=1, value_type=TransformedStation)
+
+# Define a Faust Table
 table = app.Table(
-   # "TODO",
-   name="stations_transformed",
-   default=TransformedStation,
-   partitions=1,
-   changelog_topic=out_topic,
+        "transformed_stations_table",
+        default=TransformedStation,
+        partitions=1,
+        changelog_topic=out_topic,
 )
 
 
-#
-#
-# TODO: Using Faust, transform input `Station` records into `TransformedStation` records. Note that
-# "line" is the color of the station. So if the `Station` record has the field `red` set to true,
-# then you would set the `line` of the `TransformedStation` record to the string `"red"`
-#
-#
+# Using Faust, transform input `Station` records into `TransformedStation` records.
+
 @app.agent(topic)
-async def transform_station(stations):
+async def transform(stations):
     async for station in stations:
-        print(station.station_id,
-            station.station_name,
-            station.order,
-            station.red,
-            station.blue,
-            station.green)
+        line = None
+        if station.red:
+            line = 'red'
+        elif station.blue:
+            line = 'blue'
+        elif station.green:
+            line = 'green'
+        else:
+            logger.debug(f"Can't parse line color with station_id = {station.station_id}")
+            line = ''
+
         table[station.station_id] = TransformedStation(
-            station_id = station.station_id,
-            station_name = station.station_name,
-            order = station.order,
-            line = "red" if station.red else "blue" if station.blue else "green"
+                station_id=station.station_id,
+                station_name=station.station_name,
+                order=station.order,
+                line=line
         )
+
 
 if __name__ == "__main__":
     app.main()
+
+# python faust_station.py worker

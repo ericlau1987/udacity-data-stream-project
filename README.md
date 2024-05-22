@@ -235,4 +235,4 @@ Once the simulation is running, you may hit `Ctrl+C` at any time to exit.
 
 Once the server is running, you may hit `Ctrl+C` at any time to exit.
 
-` python producers/simulation.py&consumers/faust_stream worker&consumers/ksql.py&consumers/server.py`
+` python projects/optimising_public_transportation/producers/simulation.py&consumers/faust_stream worker&consumers/ksql.py&consumers/server.py`

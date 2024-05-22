@@ -6,7 +6,7 @@ CREATE TABLE ridership_seed (
   month_beginning date,
   avg_weekday_rides decimal(19,6) NOT NULL,
   avg_saturday_rides decimal(19,6) NOT NULL,
-  avg_sunday_holiday_rides decimal(19,6) NOT NULL,
+  "avg_sunday-holiday_rides" decimal(19,6) NOT NULL,
   monthtotal INTEGER
 );
 
@@ -16,6 +16,6 @@ COPY ridership_seed(
   month_beginning,
   avg_weekday_rides,
   avg_saturday_rides,
-  avg_sunday_holiday_rides,
+  "avg_sunday-holiday_rides",
   monthtotal
 ) FROM '/temp/data/optimising_public_transportation/ridership_seed.csv' DELIMITER ',' CSV HEADER;

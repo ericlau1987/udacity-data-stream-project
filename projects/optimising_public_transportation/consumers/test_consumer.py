@@ -1,102 +1,60 @@
-# Please complete the TODO items in the code
-
 import asyncio
-from dataclasses import dataclass, field
-import json
-import random
+from time import sleep
 
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer, Producer, OFFSET_BEGINNING
 from confluent_kafka.admin import AdminClient, NewTopic
-from faker import Faker
 
-
-faker = Faker()
+import logging
+import logging.config
+from pathlib import Path
 
 BROKER_URL = "PLAINTEXT://kafka0:19092"
-TOPIC_NAME = "org.chicago.cta.weather.v1"
-offset_earliest = True
-broker_properties = {
-                #
-                # TODO
-                #
-            "bootstrap.servers": "PLAINTEXT://kafka0:19092",
-            "group.id": f"{TOPIC_NAME}",
-            "default.topic.config":
-            {"auto.offset.reset": "earliest" if offset_earliest else "latest"}
-        }
+logger = logging.getLogger(__name__)
+logging.config.fileConfig(f"{Path(__file__).parents[0]}/logging.ini")
 
-async def consume(topic_name):
+
+def consume(topic_name):
     """Consumes data from the Kafka Topic"""
-    c = Consumer(broker_properties)
-    c.subscribe([TOPIC_NAME])
+    # Sleep for a few seconds to give the producer time to create some data
+    sleep(2.5)
+
+    # TODO: Set the offset reset to earliest
+    c = Consumer(
+        {
+            "bootstrap.servers": BROKER_URL,
+            "group.id": "0",
+            "auto.offset.reset": "earliest",
+            # "max.poll.interval.ms": 500,
+            # "session.timeout.ms": 600
+        }
+    )
+
+    # TODO: Configure the on_assign callback
+    c.subscribe([topic_name], on_assign=on_assign)
 
     while True:
-        #
-        # TODO: Write a loop that uses consume to grab 5 messages at a time and has a timeout.
-        #       See: https://docs.confluent.io/current/clients/confluent-kafka-python/index.html?highlight=partition#confluent_kafka.Consumer.consume
-        messages = c.poll(0.1) # capture 10 message for each time
-        # print(f"consumed {len(messages)} messages.")
-        # TODO: Print something to indicate how many messages you've consumed. Print the key and value of
-        #       any message(s) you consumed
-        print(messages if not messages else messages.value())
-        if not messages:
-            print("no messages detected and continue the loop")
-            continue
-        for message in messages:
-            if message is None:
-                print("no message received by consumer")
-            elif message.error() is not None:
-                print(f"error from consumer {message.error()}")
-            else:
-                print(f"consumed message {message.key()}: {message.value()}")
+        message = c.poll(40)
+        if message is None:
+            print("no message received by consumer")
+        elif message.error() is not None:
+            print(f"error from consumer {message.error()}")
+        else:
+            print(f"consumed message {message.key()}: {message.value()}")
+        sleep(0.1)
+        
+def on_assign(consumer, partitions):
+    """Callback for when topic assignment takes place"""
+    # TODO: If the topic is configured to use `offset_earliest` set the partition offset to
+    # the beginning or earliest
+    for partition in partitions:
+        partition.offset = OFFSET_BEGINNING
 
-        # Do not delete this!
-        await asyncio.sleep(0.01)
-
-def main():
-    """Checks for topic and creates the topic if it does not exist"""
-    # client = AdminClient(broker_properties)
-    # consumer = Consumer(broker_properties)
-
-    try:
-        # create_topic(client, TOPIC_NAME)
-        asyncio.run(consume(TOPIC_NAME))
-    except KeyboardInterrupt as e:
-        print("shutting down")
-
-
-async def produce(topic_name):
-    """Produces data into the Kafka Topic"""
-    p = Producer({"bootstrap.servers": BROKER_URL})
-    while True:
-        for _ in range(10):
-            p.produce(topic_name, Purchase().serialize())
-        await asyncio.sleep(0.01)
-
-
-async def produce_consume(topic_name):
-    """Runs the Producer and Consumer tasks"""
-    t1 = asyncio.create_task(produce(topic_name))
-    t2 = asyncio.create_task(consume(topic_name))
-    await t1
-    await t2
-
-
-@dataclass
-class Purchase:
-    username: str = field(default_factory=faker.user_name)
-    currency: str = field(default_factory=faker.currency_code)
-    amount: int = field(default_factory=lambda: random.randint(100, 200000))
-
-    def serialize(self):
-        return json.dumps(
-            {
-                "username": self.username,
-                "currency": self.currency,
-                "amount": self.amount,
-            }
-        )
-
+    # TODO: Assign the consumer the partitions
+    consumer.assign(partitions)
+      
 
 if __name__ == "__main__":
-    main()
+    try:
+        consume('org.chicago.cta.stations.table')
+    except KeyboardInterrupt:
+        logger.debug("exit!!!")

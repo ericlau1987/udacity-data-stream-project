@@ -1,23 +1,31 @@
 """Configures a Kafka Connector for Postgres Station data"""
 import json
 import logging
+import logging.config
+
+from confluent_kafka.admin import AdminClient, NewTopic
+from kafka.admin.new_partitions import NewPartitions
+from pathlib import Path
 
 import requests
 
-
+logging.config.fileConfig(f"{Path(__file__).parents[0]}/logging.ini")
 logger = logging.getLogger(__name__)
+
 
 
 KAFKA_CONNECT_URL = "http://connect:8083/connectors"
 CONNECTOR_NAME = "stations"
 
 def configure_connector():
+    # create_topic(topic_name, num_partitions=40, num_replicas=1)
+    # logger.debug(f"creating the topic {topic_name}")
     """Starts and configures the Kafka Connect connector"""
-    logging.debug("creating or updating kafka connect connector...")
+    logger.debug("creating or updating kafka connect connector...")
 
     resp = requests.get(f"{KAFKA_CONNECT_URL}/{CONNECTOR_NAME}")
     if resp.status_code == 200:
-        logging.debug("connector already created skipping recreation")
+        logger.debug("connector already created skipping recreation")
         return
 
     # TODO: Complete the Kafka Connect Config below.
@@ -36,7 +44,7 @@ def configure_connector():
                "key.converter.schemas.enable": "false",
                "value.converter": "org.apache.kafka.connect.json.JsonConverter",
                "value.converter.schemas.enable": "false",
-               "batch.max.rows": "500",
+               "batch.max.rows": "5000",
                # TODO
                "connection.url": "jdbc:postgresql://postgres:5432/cta",
                # TODO
@@ -51,7 +59,11 @@ def configure_connector():
                "incrementing.column.name": "stop_id",
                "topic.prefix": "org.chicago.cta.",
                # TODO
-               "poll.interval.ms": "10000",
+               "poll.interval.ms": "100000",
+               "topic.creation.enable": True,
+               "topic.creation.groups": True,
+               "topic.creation.default.replication.factor": 1,
+               "topic.creation.default.partitions": 40
            }
        }),
     )
@@ -59,7 +71,7 @@ def configure_connector():
     ## Ensure a healthy response was given
     try:
         resp.raise_for_status()
-        logging.debug("connector created successfully")
+        logger.debug("connector created successfully")
     except Exception as e:
         logger.info(f"Failed to set up postgres SQL database cta")
         logger.info(f"{e}")
