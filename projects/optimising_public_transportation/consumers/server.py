@@ -6,7 +6,7 @@ from pathlib import Path
 import tornado.ioloop
 import tornado.template
 import tornado.web
-
+import colorlog
 
 # Import logging before models to ensure configuration is picked up
 logging.config.fileConfig(f"{Path(__file__).parents[0]}/logging.ini")
@@ -77,7 +77,7 @@ def run_server():
             is_avro=False,
         ),
         KafkaConsumer(
-            "org.chicago.cta.station.arrivals.",
+            "^org.chicago.cta.station.arrivals..*$",
             lines.process_message,
             offset_earliest=True,
         ),

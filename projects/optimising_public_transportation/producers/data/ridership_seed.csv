@@ -1,4 +1,4 @@
-station_id,stationame,month_beginning,avg_weekday_rides,avg_saturday_rides,avg_sunday_holiday_rides,monthtotal
+station_id,stationame,month_beginning,avg_weekday_rides,avg_saturday_rides,avg_sunday-holiday_rides,monthtotal
 40380,Clark/Lake,10/01/2018,22811.6,6901.8,6233.5,577208
 40260,State/Lake,10/01/2018,14098.7,7307.8,5824.5,376799
 40200,Randolph/Wabash,10/01/2018,0,0,0,0

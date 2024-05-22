@@ -1,14 +1,15 @@
 """Producer base-class providing common utilites and functionality"""
 import logging
+# import logging.config
 import time
-
+from pathlib import Path
 
 from confluent_kafka import avro
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.avro import AvroProducer
 
+# logging.config.fileConfig(f"{Path(__file__).parents[0]}/logging.ini")
 logger = logging.getLogger(__name__)
-
 
 class Producer:
     """Defines and provides common functionality amongst Producers"""
@@ -23,8 +24,9 @@ class Producer:
         topic_name,
         key_schema,
         value_schema=None,
-        num_partitions=1,
+        num_partitions=40,
         num_replicas=1,
+        topic_created_only=False
     ):
         """Initializes a Producer object with basic settings"""
         self.topic_name = topic_name
@@ -51,17 +53,21 @@ class Producer:
 
         # If the topic does not already exist, try to create it
         if self.topic_name not in Producer.existing_topics:
+            logger.info(f"The topic {self.topic_name} is being created.")
             self.create_topic()
             Producer.existing_topics.add(self.topic_name)
         else:
             logger.info(f"The topic {self.topic_name} exists and skipping creating the topic.")
 
+        if not topic_created_only:
         # TODO: Configure the AvroProducer - Done
-        self.producer = AvroProducer(
-            self.broker_properties,
-            default_key_schema = self.key_schema,
-            default_value_schema=self.value_schema
-        )
+            self.producer = AvroProducer(
+                self.broker_properties,
+                default_key_schema = self.key_schema,
+                default_value_schema=self.value_schema
+            )
+        else:
+            pass
 
     def create_topic(self):
         """Creates the producer topic if it does not already exist"""
@@ -74,7 +80,7 @@ class Producer:
         client = AdminClient({"bootstrap.servers": self.broker_properties["bootstrap.servers"]})
 
         if not self.topic_exists(client):
-            logger.info(f"The topic {self.topic_name} doesn't exist.")
+            logger.debug(f"The topic {self.topic_name} doesn't exist.")
             futures = client.create_topics(
             [
                 NewTopic(
@@ -101,6 +107,7 @@ class Producer:
 
     def topic_exists(self, client) -> bool:
         """Checks if the given topic exists"""
+        logger.debug(f"checking whether the topic {self.topic_name} exists or not.")
         topic_metadata = client.list_topics(timeout=5)
         return topic_metadata.topics.get(self.topic_name) is not None
 

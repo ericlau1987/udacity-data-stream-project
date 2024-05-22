@@ -20,7 +20,7 @@ class KafkaConsumer:
         topic_name_pattern,
         message_handler,
         is_avro=True,
-        offset_earliest=False,
+        offset_earliest=True,
         sleep_secs=1.0,
         consume_timeout=1,
     ):
@@ -42,8 +42,7 @@ class KafkaConsumer:
                 # TODO
                 #
             "bootstrap.servers": "PLAINTEXT://kafka0:19092",
-            "group.id": f"{topic_name_pattern}",
-            "max.poll.interval.ms": 600000,
+            "group.id": f"{self.topic_name_pattern}",
             "default.topic.config":
             {"auto.offset.reset": "earliest" if offset_earliest else "latest"
             }
@@ -63,8 +62,7 @@ class KafkaConsumer:
         # how the `on_assign` callback should be invoked.
         #
         #
-        print(self._get_topics())
-        self.consumer.subscribe(self._get_topics(), on_assign=self.on_assign)
+        self.consumer.subscribe([self.topic_name_pattern], on_assign=self.on_assign)
 
     def on_assign(self, consumer, partitions):
         """Callback for when topic assignment takes place"""
@@ -87,7 +85,7 @@ class KafkaConsumer:
             num_results = 1
             while num_results > 0:
                 num_results = self._consume()
-                print(f"{self.topic_name_pattern}: {num_results}")
+                logger.debug(f"{self.topic_name_pattern}: {num_results}")
             await gen.sleep(self.sleep_secs)
 
     def _consume(self):
@@ -99,16 +97,18 @@ class KafkaConsumer:
         # is retrieved.
         #
         #
-        message = self.consumer.poll(timeout=self.consume_timeout)
-        if message is None:
-            logger.debug("no message received by consumer")
-            return 0
-        elif message.error() is not None:
-            logger.info(f"error from consumer {message.error()}")
-        else:
-            self.message_handler(message)
-            logger.INFO(f"Consumer Message Key :{message}")
-            return 1 # message is processed
+        while True:
+            message = self.consumer.poll(timeout=self.consume_timeout)
+            if message is None:
+                logger.debug(f"no message received by consumer of the topic {self.topic_name_pattern}")
+                return 0
+            elif message.error() is not None:
+                logger.info(f"error from consumer {message.error()}")
+            else:
+                self.message_handler(message)
+                logger.INFO(f"Consumer Message Key :{message}")
+                return 1 # message is processed
+            sleep(self.sleep_secs)
 
     def _get_topics(self) -> list:
         
