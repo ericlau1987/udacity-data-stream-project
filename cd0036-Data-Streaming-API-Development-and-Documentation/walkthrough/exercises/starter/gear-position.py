@@ -1,15 +1,40 @@
 from pyspark.sql import SparkSession
 
-# TO-DO: create a spark session, with an appropriately named application name
+# the source for this data pipeline is a kafka topic, defined below
+spark = SparkSession.builder.appName("balance-events").getOrCreate()
+spark.sparkContext.setLogLevel('WARN')
 
-#TO-DO: set the log level to WARN
+gearPositionRawStreamingDF = spark                          \
+    .readStream                                          \
+    .format("kafka")                                     \
+    .option("kafka.bootstrap.servers", "kafka:19092") \
+    .option("subscribe","gear-position")                  \
+    .option("startingOffsets","earliest")\
+    .load()                                     
 
-#TO-DO: read the gear-position kafka topic as a source into a streaming dataframe with the bootstrap server kafka:19092, configuring the stream to read the earliest messages possible                                    
+#it is necessary for Kafka Data Frame to be readable, to cast each field from a binary to a string
+gearPositionStreamingDF = gearPositionRawStreamingDF.selectExpr("cast(key as string) truckId", "cast(value as string) gearPosition")
 
-#TO-DO: using a select expression on the streaming dataframe, cast the key and the value columns from kafka as strings, and then select them
+# this creates a temporary streaming view based on the streaming dataframe
+# it can later be queried with spark.sql, we will cover that in the next section 
+gearPositionStreamingDF.createOrReplaceTempView("GearPosition")
 
-# TO-DO: create a temporary streaming view called "GearPosition" based on the streaming dataframe
 
-# TO-DO: query the temporary view "GearPosition" using spark.sql 
+# this selects the data from the temporary view
+gearPositionSelectStarDF = spark.sql("select * from GearPosition")
 
-# Write the dataframe from the last query to a kafka broker at kafka:19092, with a topic called gear-position-updates
+# this takes the stream and "sinks" it to kafka as it is updated one message at a time:
+gearPositionSelectStarDF.selectExpr("cast(truckId as string) as key", "cast(gearPosition as string) as value") \
+    .writeStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "kafka:19092")\
+    .option("topic", "gear-position-updates")\
+    .option("checkpointLocation","/tmp/kafkacheckpoint")\
+    .start()\
+    .awaitTermination()
+
+# gearPositionStreamingDF.writeStream \
+#     .format("console") \
+#     .outputMode("append") \
+#     .start() \
+#     .awaitTermination() 

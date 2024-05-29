@@ -37,6 +37,53 @@ services:
     depends_on:
       - "zookeeper"
 
+  schema-registry:
+    image: confluentinc/cp-schema-registry:6.1.1
+    ports:
+    - "8081:8081"
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka:19092"
+      SCHEMA_REGISTRY_LISTENERS: "http://0.0.0.0:8081"
+      SCHEMA_REGISTRY_HOST_NAME: "schema-registry"
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC_REPLICATION_FACTOR: "1"
+    depends_on:
+    - "kafka"
+
+  rest-proxy:
+    image: confluentinc/cp-kafka-rest:5.2.2
+    ports:
+    - "8082:8082"
+    environment:
+      KAFKA_REST_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka:19092"
+      KAFKA_REST_LISTENERS: "http://0.0.0.0:8082/"
+      KAFKA_REST_HOST_NAME: "rest-proxy"
+      KAFKA_REST_SCHEMA_REGISTRY_URL: "http://schema-registry:8081/"
+    depends_on:
+    - "kafka"
+    - "schema-registry"
+
+  topics-ui:
+    image: landoop/kafka-topics-ui:0.9.4
+    ports:
+    - "8085:8085"
+    environment:
+      PORT: "8085"
+      PROXY: "true"
+      KAFKA_REST_PROXY_URL: "http://rest-proxy:8082"
+    depends_on:
+    - "rest-proxy"
+
+  schema-registry-ui:
+    image: landoop/schema-registry-ui:0.9.5
+    ports:
+    - "8086:8086"
+    environment:
+      PORT: "8086"
+      PROXY: "true"
+      SCHEMAREGISTRY_URL: "http://schema-registry:8081/"
+    depends_on:
+    - "schema-registry"
+
   banking-simulation:
     image: gcr.io/simulation-images/banking-simulation
     environment:
@@ -96,14 +143,23 @@ services:
       CONNECT_DEBUG: "y"
       DEBUG_SUSPEND_FLAG: "y"
       CLASSPATH: "/usr/share/java/kafka-connect-redis-source/*"
-
     depends_on:
     - "kafka"
     - "redis"
 
+  connect-ui:
+    image: landoop/kafka-connect-ui:0.9.7
+    ports:
+    - "8084:8084"
+    environment:
+      PORT: "8084"
+      PROXY: "true"
+      CONNECT_URL: "http://connect:8083"
+    depends_on:
+    - "connect"
+    
   spark:
     image: docker.io/bitnami/spark:3-debian-10
-    user: $USERNAME
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
