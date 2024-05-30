@@ -1,16 +1,47 @@
 from pyspark.sql import SparkSession
 
-# TO-DO: create a spark session, with an appropriately named application name
+# the source for this data pipeline is a kafka topic, defined below
+spark = SparkSession.builder.appName("atm-visits").getOrCreate()
+spark.sparkContext.setLogLevel('WARN')
 
-#TO-DO: set the log level to WARN
+atmVisitsRawStreamingDF = spark                          \
+    .readStream                                          \
+    .format("kafka")                                     \
+    .option("kafka.bootstrap.servers", "kafka:19092") \
+    .option("subscribe","atm-visits")                  \
+    .option("startingOffsets","earliest")\
+    .load()                                     
 
-#TO-DO: read the atm-visits kafka topic as a source into a streaming dataframe with the bootstrap server kafka:19092, configuring the stream to read the earliest messages possible                                    
+#it is necessary for Kafka Data Frame to be readable, to cast each field from a binary to a string
+atmVisitsStreamingDF = atmVisitsRawStreamingDF.selectExpr("cast(key as string) transactionId", "cast(value as string) location")
 
-#TO-DO: using a select expression on the streaming dataframe, cast the key and the value columns from kafka as strings, and then select them
+# this creates a temporary streaming view based on the streaming dataframe
+# it can later be queried with spark.sql, we will cover that in the next section 
+atmVisitsStreamingDF.createOrReplaceTempView("ATMVisits")
 
-# TO-DO: create a temporary streaming view called "ATMVisits" based on the streaming dataframe
+# Using spark.sql we can select any valid select statement from the spark view
+atmVisitsSelectStarDF=spark.sql("select * from ATMVisits")
 
-# TO-DO query the temporary view with spark.sql, with this query: "select * from ATMVisits"
+# this takes the stream and "sinks" it to the console as it is updated one message at a time:
+# +---------+-----+
+# |      key|value|
+# +---------+-----+
+# |241325569|Syria|
+# +---------+-----+
 
-# TO-DO: write the dataFrame from the last select statement to kafka to the atm-visit-updates topic, on the broker kafka:19092
-# TO-DO: for the "checkpointLocation" option in the writeStream, be sure to use a unique file path to avoid conflicts with other spark scripts
+atmVisitsSelectStarDF.selectExpr("cast(transactionId as string) as key", "cast(location as string) as value") \
+    .writeStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "kafka:19092")\
+    .option("topic", "atm-visit-updates")\
+    .option("failOnDataLoss", "false") \
+    .option("checkpointLocation","/tmp/kafkacheckpoint")\
+    .start()\
+    .awaitTermination()
+
+# atmVisitsSelectStarDF.selectExpr("cast(transactionId as string) as key", "cast(location as string) as value") \
+#     .writeStream \
+#     .format("console") \
+#     .outputMode("append") \
+#     .start() \
+#     .awaitTermination() 
