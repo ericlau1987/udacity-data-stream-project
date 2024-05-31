@@ -33,7 +33,7 @@ gearPositionSelectStarDF.selectExpr("cast(truckId as string) as key", "cast(gear
     .start()\
     .awaitTermination()
 
-# gearPositionStreamingDF.writeStream \
+# gearPositionSelectStarDF.writeStream \
 #     .format("console") \
 #     .outputMode("append") \
 #     .start() \
