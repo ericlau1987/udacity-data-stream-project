@@ -2,6 +2,8 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, to_json, col, unbase64, base64, split, expr
 from pyspark.sql.types import StructField, StructType, StringType, BooleanType, ArrayType, DateType
 
+# this is a manually created schema - before Spark 3.0.0, schema inference is not automatic
+
 redisMessageSchema = StructType(
     [
         StructField("key", StringType()),
@@ -21,31 +23,54 @@ redisMessageSchema = StructType(
     ]
 )
 
-# TO-DO: create a StructType for the CustomerLocation schema for the following fields:
-# {"accountNumber":"814840107","location":"France"}
 
-# TO-DO: create a spark session, with an appropriately named application name
+# this is a manually created schema - before Spark 3.0.0, schema inference is not automatic
+# since we are not using the date or the amount in sql calculations, we are going
+# to cast them as strings
+# {"accountNumber":"703934969","amount":625.8,"dateAndTime":"Sep 29, 2020, 10:06:23 AM","transactionId":1601395583682}
+customerLocationSchema = StructType (
+    [
+        StructField("accountNumber", StringType()),
+        StructField("location", StringType()),
+    ]   
+)
 
-#TO-DO: set the log level to WARN
 
-#TO-DO: read the redis-server kafka topic as a source into a streaming dataframe with the bootstrap server kafka:19092, configuring the stream to read the earliest messages possible                                    
+# the source for this data pipeline is a kafka topic, defined below
+spark = SparkSession.builder.appName("customer-location").getOrCreate()
+spark.sparkContext.setLogLevel('WARN')
 
-#TO-DO: using a select expression on the streaming dataframe, cast the key and the value columns from kafka as strings, and then select them
+redisServerRawStreamingDF = spark                          \
+    .readStream                                          \
+    .format("kafka")                                     \
+    .option("kafka.bootstrap.servers", "kafka:19092") \
+    .option("subscribe","redis-server")                  \
+    .option("startingOffsets","earliest")\
+    .load()                                     
 
-#TO-DO: using the redisMessageSchema StructType, deserialize the JSON from the streaming dataframe 
+#it is necessary for Kafka Data Frame to be readable, to cast each field from a binary to a string
+redisServerStreamingDF = redisServerRawStreamingDF.selectExpr("cast(key as string) key", "cast(value as string) value")
 
-# TO-DO: create a temporary streaming view called "RedisData" based on the streaming dataframe
-# it can later be queried with spark.sql
+# this creates a temporary streaming view based on the streaming dataframe
+# it can later be queried with spark.sql, we will cover that in the next section 
+redisServerStreamingDF.withColumn("value",from_json("value",redisMessageSchema))\
+        .select(col('value.*')) \
+        .createOrReplaceTempView("RedisData")
 
-#TO-DO: using spark.sql, select key, zSetEntries[0].element as customerLocation from RedisData
+# Using spark.sql we can select any valid select statement from the spark view
+zSetEntriesEncodedStreamingDF=spark.sql("select key, zSetEntries[0].element as customerLocation from RedisData")
 
-#TO-DO: from the dataframe use the unbase64 function to select a column called customerLocation with the base64 decoded JSON, and cast it to a string
+zSetDecodedEntriesStreamingDF= zSetEntriesEncodedStreamingDF.withColumn("customerLocation", unbase64(zSetEntriesEncodedStreamingDF.customerLocation).cast("string"))
 
-#TO-DO: using the customer location StructType, deserialize the JSON from the streaming dataframe, selecting column customerLocation.* as a temporary view called CustomerLocation 
+zSetDecodedEntriesStreamingDF\
+    .withColumn("customerLocation", from_json("customerLocation", customerLocationSchema))\
+    .select(col('customerLocation.*'))\
+    .createOrReplaceTempView("CustomerLocation")\
 
-#TO-DO: using spark.sql select * from CustomerLocation
+customerLocationStreamingDF = spark.sql("select * from CustomerLocation")
 
-# TO-DO: write the stream to the console, and configure it to run indefinitely, the console output will look something like this:
+# this takes the stream and "sinks" it to the console as it is updated one message at a time (null means the JSON parsing didn't match the fields in the schema):
+
 # +-------------+---------+
 # |accountNumber| location|
 # +-------------+---------+
@@ -59,4 +84,5 @@ redisMessageSchema = StructType(
 # |     93618942|Argentina|
 # +-------------+---------+
 
+customerLocationStreamingDF.writeStream.outputMode("append").format("console").start().awaitTermination()
 
