@@ -12,7 +12,7 @@ version: '3.7'
 
 services:
   redis:
-    image: redis:6.0.6
+    image: redis:5.0.12
     ports:
       - "6379:6379"
 
@@ -115,7 +115,7 @@ services:
       REDIS_PORT: 6379
       REDIS_DB: 0
       KAFKA_BROKER: kafka:19092
-      KAFKA_RISK_TOPIC: your-topic-here
+      KAFKA_RISK_TOPIC: stedi-risk-score
     depends_on:
       - "kafka"
       - "redis"      

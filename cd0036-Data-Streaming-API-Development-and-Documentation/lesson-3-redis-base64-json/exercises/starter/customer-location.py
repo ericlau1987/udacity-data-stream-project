@@ -19,7 +19,6 @@ redisMessageSchema = StructType(
                 StructField("score", StringType())   \
             ]))                                      \
         )
-
     ]
 )
 
@@ -67,7 +66,7 @@ zSetDecodedEntriesStreamingDF\
     .select(col('customerLocation.*'))\
     .createOrReplaceTempView("CustomerLocation")\
 
-customerLocationStreamingDF = spark.sql("select * from CustomerLocation")
+customerLocationStreamingDF = spark.sql("select * from CustomerLocation where location is not null")
 
 # this takes the stream and "sinks" it to the console as it is updated one message at a time (null means the JSON parsing didn't match the fields in the schema):
 

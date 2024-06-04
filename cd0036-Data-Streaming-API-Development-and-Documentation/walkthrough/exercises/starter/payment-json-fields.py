@@ -64,22 +64,23 @@ zSetEntriesEncodedStreamingDF=spark.sql("select key, zSetEntries[0].element as p
 
 zSetDecodedEntriesStreamingDF= zSetEntriesEncodedStreamingDF.withColumn("payment", unbase64(zSetEntriesEncodedStreamingDF.payment).cast("string"))
 
-zSetDecodedEntriesStreamingDF\
+zSetDecodedEntriesStreamingDF \
     .withColumn("payment", from_json("payment", paymentJSONSchema))\
     .select(col('payment.*'))\
     .createOrReplaceTempView("Payment")\
 
-paymentStreamingDF = spark.sql("select reservationId, amount from Payment")
+paymentStreamingDF = spark.sql("select reservationId, amount from Payment where amount is not null")
 
 # this takes the stream and "sinks" it to the console as it is updated one message at a time (null means the JSON parsing didn't match the fields in the schema):
 # {"reservationId":"9856743232","amount":"946.88"}
 
-# paymentStreamingDF.selectExpr("CAST(reservationId AS STRING) AS key", "to_json(struct(*)) AS value")\
-#     .writeStream \
-#     .format("kafka") \
-#     .option("kafka.bootstrap.servers", "kafka:19092")\
-#     .option("topic", "payment-json")\
-#     .option("checkpointLocation","/tmp/kafkacheckpoint")\
-#     .start()\
-#     .awaitTermination()
-paymentStreamingDF.writeStream.outputMode("append").format("console").start().awaitTermination()
+paymentStreamingDF.selectExpr("CAST(reservationId AS STRING) AS key", "to_json(struct(*)) AS value")\
+    .writeStream \
+    .format("kafka") \
+    .option("kafka.bootstrap.servers", "kafka:19092")\
+    .option("topic", "payment-json")\
+    .option("checkpointLocation","/tmp/kafkacheckpoint")\
+    .option("failOnDataLoss", "false") \
+    .start()\
+    .awaitTermination()
+# paymentStreamingDF.writeStream.outputMode("append").format("console").start().awaitTermination()

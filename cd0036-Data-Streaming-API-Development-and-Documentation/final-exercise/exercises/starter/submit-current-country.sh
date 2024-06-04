@@ -1,2 +1,2 @@
 #!/bin/bash
-docker exec -it nd029-c2-apache-spark-and-spark-streaming-starter_spark_1 /opt/bitnami/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0 /home/workspace/final-exercise/exercises/starter/current-country.py | tee ../../../spark/logs/current-country.log
+docker exec -it cd0036-data-streaming-api-development-and-documentation-spark-1 /opt/bitnami/spark/bin/spark-submit --driver-memory 5g --executor-memory 5g --executor-cores 1 --conf spark.driver.maxResultSize=0 --conf spark.network.timeout=10000000 --master spark://spark:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 /home/workspace/final-exercise/exercises/starter/current-country.py | tee ../../../spark/logs/current-country.log
