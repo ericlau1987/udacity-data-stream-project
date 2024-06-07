@@ -84,27 +84,27 @@ services:
     depends_on:
     - "schema-registry"
 
-  banking-simulation:
-    image: gcr.io/simulation-images/banking-simulation
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      KAFKA_BROKER: kafka:19092
-    depends_on:
-      - "kafka"
-      - "redis"
+  # banking-simulation:
+  #   image: gcr.io/simulation-images/banking-simulation
+  #   environment:
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: 6379
+  #     REDIS_DB: 0
+  #     KAFKA_BROKER: kafka:19092
+  #   depends_on:
+  #     - "kafka"
+  #     - "redis"
 
-  trucking-simulation:
-    image: gcr.io/simulation-images/trucking-simulation
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      KAFKA_BROKER: kafka:19092
-    depends_on:
-      - "kafka"
-      - "redis"      
+  # trucking-simulation:
+  #   image: gcr.io/simulation-images/trucking-simulation
+  #   environment:
+  #     REDIS_HOST: redis
+  #     REDIS_PORT: 6379
+  #     REDIS_DB: 0
+  #     KAFKA_BROKER: kafka:19092
+  #   depends_on:
+  #     - "kafka"
+  #     - "redis"      
 
   stedi:
     image: gcr.io/simulation-images/stedi
@@ -129,11 +129,15 @@ services:
       CONNECT_BOOTSTRAP_SERVERS: "PLAINTEXT://kafka:19092"
       CONNECT_GROUP_ID: "connect"
       CONNECT_REST_ADVERTISED_HOST_NAME: "connect"
-      CONNECT_PLUGIN_PATH: "/usr/share/java"
+      CONNECT_PLUGIN_PATH: "/usr/share/java, /opt/confluent-5.1.0/share/confluent-hub-components"
       CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_KEY_CONVERTER_SCHEMA_ENABLE: "false"
+      CONNECT_INTERNAL_VALUE_CONVERTER_SCHEMA_ENABLE: "false"
       CONNECT_KEY_CONVERTER: "org.apache.kafka.connect.converters.ByteArrayConverter"
       CONNECT_VALUE_CONVERTER: "org.apache.kafka.connect.storage.StringConverter"
+      CONNECT_KEY_CONVERTER_SCHEMA_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMA_ENABLE: "false"
       CONNECT_CONFIG_STORAGE_TOPIC: "connect-config"
       CONNECT_OFFSET_STORAGE_TOPIC: "connect-offset"
       CONNECT_STATUS_STORAGE_TOPIC: "connect-status"
@@ -141,11 +145,13 @@ services:
       CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: "1"
       CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: "1"
       CONNECT_DEBUG: "y"
+      CONNECT_SERIALIZATIONFEATURE_FAIL_ON_EMPTY_BEANS: "false"
       DEBUG_SUSPEND_FLAG: "y"
       CLASSPATH: "/usr/share/java/kafka-connect-redis-source/*"
     depends_on:
     - "kafka"
     - "redis"
+    - "stedi"
     - "schema-registry"
 
   connect-ui:

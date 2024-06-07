@@ -78,16 +78,16 @@ relevantCustomerFieldsStreamingDF = customerStreamingDF.select(
 # You will need to type 'docker exec -it nd029-c2-apache-spark-and-spark-streaming_kafka_1 kafka-console-consumer --bootstrap-server localhost:19092 --topic customer-attributes' to see the JSON data
 #
 # The data will look like this: {"accountNumber":"288485115","location":"Brazil","birthYear":"1938"}
-relevantCustomerFieldsStreamingDF.selectExpr(
-    "cast(accountNumber as string) as key",
-    "to_json(struct(*)) as value"
-).writeStream \
-.format("kafka") \
-.option("kafka.bootstrap.servers", "kafka:19092") \
-.option("topic", "customer-attributes") \
-.option("checkpointLocation","/tmp/kafkacheckpoint/v4")\
-.option("failOnDataLoss", "false") \
-.start()\
-.awaitTermination()
-# relevantCustomerFieldsStreamingDF.writeStream.outputMode("append").format("console").start().awaitTermination()
+# relevantCustomerFieldsStreamingDF.selectExpr(
+#     "cast(accountNumber as string) as key",
+#     "to_json(struct(*)) as value"
+# ).writeStream \
+# .format("kafka") \
+# .option("kafka.bootstrap.servers", "kafka:19092") \
+# .option("topic", "customer-attributes") \
+# .option("checkpointLocation","/tmp/kafkacheckpoint/v4")\
+# .option("failOnDataLoss", "false") \
+# .start()\
+# .awaitTermination()
+customerStreamingDF.writeStream.outputMode("append").format("console").start().awaitTermination()
 

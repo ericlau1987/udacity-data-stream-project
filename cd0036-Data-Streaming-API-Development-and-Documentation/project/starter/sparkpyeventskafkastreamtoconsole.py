@@ -1,12 +1,36 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col, unbase64, base64, split
-from pyspark.sql.types import StructField, StructType, StringType, BooleanType, ArrayType, DateType
+from pyspark.sql.types import StructField, StructType, StringType, BooleanType, ArrayType, DateType, FloatType
 
+
+redisServerSchema = StructType(
+    [
+        StructField("customer", StringType()),
+        StructField("score", FloatType()),
+        StructField("riskDate", DateType())
+    ]
+)
 # TO-DO: using the spark application object, read a streaming dataframe from the Kafka topic stedi-events as the source
 # Be sure to specify the option that reads all the events from the topic including those that were published before you started the spark stream
-                                   
+spark = SparkSession.builder.appName("stedi-events").getOrCreate()  
+spark.sparkContext.setLogLevel("WARN")                    
+stediEventsRawStreamingDF = spark.readStream \
+.format("kafka") \
+.option("kafka.bootstrap.servers", "kafka:19092") \
+.option("subscribe", "stedi-events") \
+.option("startingOffsets", "earliest") \
+.load()
 # TO-DO: cast the value column in the streaming dataframe as a STRING 
+stediEventsRawStreamingDF = stediEventsRawStreamingDF.selectExpr(
+    "cast(key as string) as key",
+    "cast(value as string) as value"
+)
+stediEventsStreamingDF = stediEventsRawStreamingDF \
+    .withColumn("value", from_json("value", redisServerSchema)) \
+    .select(col("value.*")) \
+    .createOrReplaceTempView("CustomerRisk")
 
+stediDataStreamingDF = spark.sql("select * from CustomerRisk")
 # TO-DO: parse the JSON from the single column "value" with a json object in it, like this:
 # +------------+
 # | value      |
@@ -35,3 +59,8 @@ from pyspark.sql.types import StructField, StructType, StringType, BooleanType, 
 # Run the python script by running the command from the terminal:
 # /home/workspace/submit-event-kafka-streaming.sh
 # Verify the data looks correct 
+customerRiskStreamingDF = stediDataStreamingDF.select(
+    "customer",
+    "score"
+)
+customerRiskStreamingDF.writeStream.outputMode("append").format("console").start().awaitTermination()
