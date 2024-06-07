@@ -1,0 +1,2 @@
+#!/bin/bash
+docker exec -it cd0036-data-streaming-api-development-and-documentation-spark-1 /opt/bitnami/spark/bin/spark-submit --master spark://spark:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 /home/workspace/lesson-2-joins-and-json/exercises/starter/bank-deposits.py | tee ../../../spark/logs/bank-deposits.log 

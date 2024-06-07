@@ -1,0 +1,2 @@
+#!/bin/bash
+docker exec -it cd0036-data-streaming-api-development-and-documentation-spark-1 /opt/bitnami/spark/bin/spark-submit --driver-memory 5g --executor-memory 5g --executor-cores 1 --conf spark.driver.maxResultSize=0 --conf spark.network.timeout=10000000 --master spark://spark:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.2.1 /home/workspace/lesson-3-redis-base64-json/exercises/starter/customer-record.py | tee ../../../spark/logs/customer-record.log 
